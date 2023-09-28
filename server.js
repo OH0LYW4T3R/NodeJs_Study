@@ -1,13 +1,30 @@
 const express = require("express"); // include express
 const app = express(); // Generate Object
 const bodyParser = require("body-parser");
+const { MongoClient } = require("mongodb");
+
+app.set("view engine", "ejs");
+
+let db;
+const url =
+  "mongodb+srv://admin:<password>@mongodb-cluster.duazndc.mongodb.net/?retryWrites=true&w=majority";
+new MongoClient(url)
+  .connect() // Mongodb connect
+  .then((client) => {
+    // if connect
+    console.log("DB연결성공");
+    db = client.db("forum");
+
+    app.listen(8080, function () {
+      // Open Server
+      console.log("listening on 8080");
+    }); // 1 parameter : port, 2 parameter : Server on -> Run code
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.listen(8080, function () {
-  // Open Server
-  console.log("listening on 8080");
-}); // 1 parameter : port, 2 parameter : Server on -> Run code
 
 app.get("/pet", function (request, response) {
   // Get request : route(/pet)
@@ -27,14 +44,30 @@ app.get("/beauty", function (req, res) {
 app.get("/", function (req, res) {
   // Get request : route(/)
   res.sendFile(__dirname + "/index.html");
-  console.log(req);
 });
 
 app.get("/write", function (req, res) {
   res.sendFile(__dirname + "/write.html");
 });
 
-app.post("/add", function (req, res) {
+app.get("/list", async (req, res) => {
+  let result = await db.collection("post").find().toArray(); // 처리가 오래 걸리므로 await을 써서 잠깐 기달려 달라는 의미
+  console.log(result);
+
+  res.render("list.ejs", { posts: result });
+});
+
+app.post("/add", async (req, res) => {
   res.send("전송완료");
-  console.log(req.body.title); // req.body = form contents (object) ex) { title: 'asdf', date: 'fads' }
+  //console.log(req.body.title); // req.body = form contents (object) ex) { title: 'asdf', date: 'fads' }
+
+  let result = await db
+    .collection("counter")
+    .findOne({ name: "게시물개수" })
+    .toArray();
+
+  db.collection("post").insertOne(
+    { _id: result.totalPost + 1, Title: req.body.title, Date: req.body.date },
+    function (err, result) {}
+  );
 });
